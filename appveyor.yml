@@ -31,6 +31,7 @@ build_script:
 - sh: |
     
     minikube start --vm-driver=none
+    kubectl describe node minikube
     kubectl apply -f api.yaml
 
     ./wait_pod_is_ready.sh 60 1
