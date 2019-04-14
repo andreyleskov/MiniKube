@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        type: node
+    spec:
+      containers:
+      - name: mightycalc-api-container
+        image: aleskov/mightycalc-api:stable
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "pbm 127.0.0.1:9110 cluster leave"]
+        ports:
+        - name: http
+          containerPort: 80
+        - name: akka
+          containerPort: 2552
+          protocol: TCP
+        - name: akka-cmd
+          containerPort: 9110
+          protocol: TCP
+        livenessProbe:
+          tcpSocket:
+            port: 2552
+        env:
+        - name: MightyCalc_ReadModel
+          value: "Host=postgres-svc;Port=5432;Database=readmodel;User ID=postgres;"
+        - name: MightyCalc_NodePort
+          value: "2552"
+        - name: MightyCalc_CmdPort
+          value: "9110"
+        - name: MightyCalc_SeedNodes
+          value: "akka.tcp://MightyCalc@seed-0.seeds:2552"
+        - name: HOST_NAME
+          valueFrom:
+            fieldRef:
+               apiVersion: v1
+               fieldPath: metadata.name 
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MightyCalc_HostName
+          value: "$(HOST_IP)"
+        - name: MightyCalc_PublicHostName
+          value: "$(HOST_IP)"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      terminationGracePeriodSeconds: 10
